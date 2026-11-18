@@ -1,0 +1,6 @@
+numpy
+pillow
+librosa
+soundfile
+pocketsphinx
+matplotlib

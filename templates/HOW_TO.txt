@@ -1,0 +1,18 @@
+LYRIC NOIR - how to add the lyrics (Windows, VS Code)
+
+Files in this folder:
+  <episode>.mp4        the animation (silent)
+  lyrics.srt           one block per sung line, placeholder words, already timed
+  anchors.json         where the words appear in each shot (don't edit)
+  lyrics_overlay.py    the script
+  Poppins-Regular.ttf  the font
+
+1. Put your song in this folder and name it song.mp3
+   (check with:  dir *.mp3   - if it says song.mp3.mp3, run:  ren song.mp3.mp3 song.mp3)
+2. One time only:  python -m pip install pillow numpy      (and ffmpeg:  winget install ffmpeg)
+3. Open lyrics.srt. In each block replace "word1 word2 ..." with that line of the song.
+   Keep the numbers, the times and the empty lines. Save (Ctrl+S, UTF-8).
+4. Run:
+   python lyrics_overlay.py <episode>.mp4 lyrics.srt final.mp4 --audio song.mp3
+5. Watch final.mp4. A line early/late? Change only that block's times and run step 4 again.
+   Everything early/late? Add --offset 0.3 (later) or --offset -0.3 (earlier).

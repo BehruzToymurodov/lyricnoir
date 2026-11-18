@@ -1,0 +1,10 @@
+work/
+dist/
+__pycache__/
+*.pyc
+# never commit songs or lyrics
+*.mp3
+*.m4a
+*.wav
+*lyrics*.txt
+lines.txt
