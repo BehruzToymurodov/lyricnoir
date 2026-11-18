@@ -38,7 +38,12 @@ def _normalize(line):
     import re
     s = line.lower().replace("’", "'").replace("mr.", "mister").replace("mrs.", "missus").replace("&", "and")
     s = re.sub(r"[^a-z' ]+", " ", s)
-    return [w.strip("'") if w.startswith("'") else w for w in s.split()]
+    out = []
+    for w in s.split():
+        if w.endswith("in'"):          # sung dropped-g: livin' -> living
+            w = w[:-1] + "g"
+        out.append(w.strip("'") if w.startswith("'") else w)
+    return out
 
 
 def align(stem16k, lines, t0=0.0, t1=None):
