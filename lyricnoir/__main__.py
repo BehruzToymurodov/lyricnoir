@@ -112,11 +112,13 @@ def cmd_cover(a):
 
 
 def cmd_package(a):
-    from .render import anchors
+    from .render import anchors, load_story
     d = dist_dir(a.ep)
     cmd_srt(a); anchors(a.ep)
     shutil.copy(os.path.join(ROOT, "lyricnoir", "overlay_standalone.py"), os.path.join(d, "lyrics_overlay.py"))
-    shutil.copy(os.path.join(ASSETS, "fonts", "Poppins-Regular.ttf"), d)
+    st = load_story(a.ep)
+    lf = {"spray": "SairaStencilOne-Regular.ttf"}.get(st.META.get("lyric_style"), "Poppins-Regular.ttf")
+    shutil.copy(os.path.join(ASSETS, "fonts", lf), d)
     shutil.copy(os.path.join(ROOT, "templates", "HOW_TO.txt"), d)
     if a.song:
         subprocess.run([sys.executable, os.path.join(d, "lyrics_overlay.py"), os.path.join(d, f"{a.ep}.mp4"),

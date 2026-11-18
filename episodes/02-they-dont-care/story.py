@@ -17,7 +17,7 @@ from lyricnoir.paths import font, work_dir
 EP = "02-they-dont-care"
 META = dict(
     title="They Don't Care About Us", artist="Michael Jackson", number=2,
-    audio_start=101.6, duration=98.6, fade_out=3.0,
+    audio_start=101.6, duration=98.6, fade_out=3.0, lyric_style="spray",
     hook=["They painted us gray.", "We learned to glow."],       # invented, not lyrics
     cover=dict(t=79.0, z=1.25, cx=1600, cy=740),
 )

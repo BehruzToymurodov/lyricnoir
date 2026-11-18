@@ -80,7 +80,7 @@ def anchors(ep):
         r = [(a[0] - cx) * z + W / 2, (a[1] - cy) * z + H / 2, (a[2] - cx) * z + W / 2, (a[3] - cy) * z + H / 2]
         rects.append([round(v, 1) for v in r])
     meta = {"fps": FPS, "size": [W, H], "duration": st.META["duration"], "audio_start": st.META["audio_start"],
-            "fade_out": st.META.get("fade_out", 3.2), "rects": rects}
+            "fade_out": st.META.get("fade_out", 3.2), "style": st.META.get("lyric_style", "neon"), "rects": rects}
     out = os.path.join(dist_dir(ep), "anchors.json")
     with open(out, "w") as f: json.dump(meta, f, separators=(",", ":"))
     return out
