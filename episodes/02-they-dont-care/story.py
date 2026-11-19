@@ -4,6 +4,8 @@ and the searchlight can't look away.
 Song section used: 1:41.6 -> ~3:20 (timings in timing.json; never store lyrics here).
 
 Style (new for this film): dark wet concrete wall at night; people are spray-paint stencils with drips.
+v2 look: stencil people from lyricnoir.stencil (3-layer paint, stop-motion with paint ghosts), drum-synced
+shake/flashes (beats.json), volumetric searchlights with rain in the beam, passers-by, headlight flare, bloom.
 Ignored people = flat gray paint. Whoever stands up turns black with a glowing white light outline.
 Red = the armband only (painted, then glowing), passed person to person along a red light line.
 Police light / searchlights are cold white. Screen-space scenes: the government building and his profile.
@@ -19,7 +21,7 @@ META = dict(
     title="They Don't Care About Us", artist="Michael Jackson", number=2,
     audio_start=101.6, duration=98.6, fade_out=3.0, lyric_style="spray",
     hook=["They painted us gray.", "We learned to glow."],       # invented, not lyrics
-    cover=dict(t=79.0, z=1.25, cx=1600, cy=740),
+    cover=dict(t=81.5, z=1.2, cx=1600, cy=760),
 )
 
 # ---------------------------------------------------------------- timing (video seconds)
@@ -29,12 +31,13 @@ LS = {r["line"]: r["start"] - A0 for r in _T["lines"]}           # line starts i
 HITS = [LS[i] for i in range(10, 18)]                             # the fast skin-head lines
 SOLO0, SOLO1 = 163.5 - A0, 186.5 - A0                             # guitar solo
 SH2, SH3, SH4, SH5A, SH5B, SH6, SH7, SH9 = LS[1], LS[3], LS[5], LS[7], LS[9], LS[10], LS[18], LS[20]
+CUT2 = 112.24 - A0                                                # the drums kick back in
 END = META["duration"]
 
 # ---------------------------------------------------------------- camera
 CAM = [
-    (0.0, SH2, 1.22, 1.32, 1600, 1600, 690, 690),               # 1 hook: darkness + red armband
-    (SH2, SH3, 0.92, 0.97, 1560, 1640, 640, 640),               # 2 wall of gray stencils
+    (0.0, CUT2, 1.55, 1.75, 1600, 1600, 650, 650),              # 1 hook: darkness + red armband
+    (CUT2, SH3, 0.98, 1.30, 1560, 1610, 630, 650),              # 2 the wall; he turns to us
     (SH3, SH4, 1.42, 1.52, 1690, 1705, 600, 590),               # 3 him + poster
     (SH4, SH5A, 1.02, 0.98, 1600, 1600, 650, 650),              # 4 police strobes
     (SH5A, SH5B, 1.0, 1.0, 960, 960, 540, 540),                 # 5a building (screen space)
@@ -66,8 +69,7 @@ for k, x in enumerate([2120, 1080, 2380, 820, 2640, 560, 2900, 300]):
     LIGHT_T[x] = SOLO0 + 1.6 + k * 2.55
 SOURCE = {1860: MAN_X, 1340: MAN_X, 2120: 1860, 1080: 1340, 2380: 2120, 820: 1080, 2640: 2380, 560: 820,
           2900: 2640, 300: 560}
-BAND_Y = GROUND - 0.70 * 420
-WS = 2.5                                       # stencil mask pixels per world unit
+BAND_Y = GROUND - 0.68 * 440
 POSTER = (1664, 330, 1796, 510)
 RED_PAINT = np.array([150, 18, 36], np.float32)
 RED_GLOW = np.array([255, 34, 76], np.float32)
@@ -115,135 +117,6 @@ def wall_crop(c):
     return np.stack([a, a, a * 1.04], -1)
 
 
-# ---------------------------------------------------------------- stencil figures
-def _seg(p, q, w):
-    dx, dy = q[0] - p[0], q[1] - p[1]; L = math.hypot(dx, dy) or 1
-    nx, ny = -dy / L * w / 2, dx / L * w / 2
-    return [(p[0] + nx, p[1] + ny), (q[0] + nx, q[1] + ny), (q[0] - nx, q[1] - ny), (p[0] - nx, p[1] - ny)]
-
-
-def _norm(v):
-    L = math.hypot(*v) or 1; return (v[0] / L, v[1] / L)
-
-
-def figure_shapes(kind, rk):
-    """Normalized shapes (height 1, feet at y=0, up is -y). rk = raise of the right (+x) arm 0..1."""
-    P, E, gaps = [], [], []
-    head_r = 0.085 if kind == "child" else 0.066
-    lean = 0.07 if kind == "old" else 0.0
-    L = lambda x, y: (x + lean * (-y) * 0.6, y)                 # lean the upper body forward
-    E.append((L(0, -0.912)[0], -0.912, head_r, head_r * 1.13))
-    P.append([L(-0.03, -0.86), L(0.03, -0.86), L(0.035, -0.81), L(-0.035, -0.81)])            # neck
-    gaps.append(_seg(L(-0.05, -0.838), L(0.05, -0.838), 0.012))   # stencil bridge at the neck
-    P.append([L(-0.128, -0.815), L(0.128, -0.815), L(0.10, -0.51), L(0.112, -0.47), L(-0.112, -0.47), L(-0.10, -0.51)])
-    if kind == "woman":
-        P.append([(-0.10, -0.52), (0.10, -0.52), (0.17, -0.24), (-0.17, -0.24)])
-        E.append((L(0, -0.885)[0], -0.885, head_r * 1.32, head_r * 1.55))
-        P.append([(-0.075, -0.25), (-0.025, -0.25), (-0.035, -0.02), (-0.07, -0.02)])
-        P.append([(0.025, -0.25), (0.075, -0.25), (0.07, -0.02), (0.035, -0.02)])
-    else:
-        P.append([(-0.11, -0.48), (-0.012, -0.48), (-0.03, -0.02), (-0.095, -0.02)])
-        P.append([(0.012, -0.48), (0.11, -0.48), (0.095, -0.02), (0.03, -0.02)])
-    E.append((-0.07, -0.012, 0.05, 0.016)); E.append((0.07, -0.012, 0.05, 0.016))     # shoes
-    if kind == "hat":
-        P.append([L(-0.115, -0.972), L(0.115, -0.972), L(0.115, -0.955), L(-0.115, -0.955)])
-        P.append([L(-0.068, -1.05), L(0.068, -1.05), L(0.072, -0.97), L(-0.072, -0.97)])
-    # left arm (hangs)
-    sL = L(-0.128, -0.79); eL = (sL[0] - 0.04, sL[1] + 0.17); hL = (eL[0] - 0.01, eL[1] + 0.16)
-    P.append(_seg(sL, eL, 0.056)); P.append(_seg(eL, hL, 0.046)); E.append((hL[0], hL[1], 0.03, 0.03))
-    E.append((sL[0] + 0.012, sL[1] - 0.004, 0.04, 0.034)); E.append((eL[0], eL[1], 0.027, 0.027))
-    if kind == "old":                                                       # cane
-        P.append(_seg((hL[0] - 0.01, hL[1]), (hL[0] - 0.06, 0.0), 0.016))
-    # right arm: hangs (rk=0) -> raised fist (rk=1)
-    sR = L(0.128, -0.79)
-    u0, u1 = _norm((0.25, 1)), _norm((0.5, -0.86))
-    f0, f1 = _norm((0.06, 1)), _norm((0.12, -1))
-    u = _norm((lerp(u0[0], u1[0], rk), lerp(u0[1], u1[1], rk)))
-    f = _norm((lerp(f0[0], f1[0], rk), lerp(f0[1], f1[1], rk)))
-    eR = (sR[0] + u[0] * 0.17, sR[1] + u[1] * 0.17); hR = (eR[0] + f[0] * 0.16, eR[1] + f[1] * 0.16)
-    P.append(_seg(sR, eR, 0.058)); P.append(_seg(eR, hR, 0.047))
-    E.append((sR[0] - 0.012, sR[1] - 0.004, 0.04, 0.034)); E.append((eR[0], eR[1], 0.027, 0.027))
-    E.append((hR[0], hR[1], 0.036 if rk > 0.5 else 0.03, 0.036 if rk > 0.5 else 0.03))
-    a, b = (sR[0] + u[0] * 0.05, sR[1] + u[1] * 0.05), (sR[0] + u[0] * 0.105, sR[1] + u[1] * 0.105)
-    band = _seg(a, b, 0.082)
-    return P, E, gaps, band
-
-
-class Stencil:
-    """Pre-rendered masks (paint, armband, glow, armband halo) for one figure in one pose."""
-    def __init__(s, kind, h, rk, seed):
-        P, E, gaps, band = figure_shapes(kind, rk)
-        s.h = h; m = 70 / h
-        s.bx0, s.by0, s.bx1, s.by1 = -0.42 - m, -1.15 - m, 0.42 + m, 0.22 + m        # normalized local box
-        Wp = int((s.bx1 - s.bx0) * h * WS); Hp = int((s.by1 - s.by0) * h * WS)
-        T = lambda p: ((p[0] - s.bx0) * h * WS, (p[1] - s.by0) * h * WS)
-        paint = Image.new("L", (Wp, Hp), 0); d = ImageDraw.Draw(paint)
-        for poly in P: d.polygon([T(p) for p in poly], fill=255)
-        for (cx, cy, rx, ry) in E:
-            a, b = T((cx - rx, cy - ry)), T((cx + rx, cy + ry)); d.ellipse([a, b], fill=255)
-        for g in gaps: d.polygon([T(p) for p in g], fill=0)
-        bandm = Image.new("L", (Wp, Hp), 0); ImageDraw.Draw(bandm).polygon([T(p) for p in band], fill=255)
-        bandm = Image.fromarray(np.minimum(np.asarray(bandm), np.asarray(paint.filter(ImageFilter.MaxFilter(5)))))
-        r = np.random.default_rng(seed)
-        pa = np.asarray(paint, np.float32) / 255
-        # spray overspray + speckle
-        over = np.asarray(paint.filter(ImageFilter.GaussianBlur(3 * WS)), np.float32) / 255
-        far = np.asarray(paint.filter(ImageFilter.GaussianBlur(10 * WS)), np.float32) / 255
-        spk = (r.random(pa.shape) < 0.05) * far
-        # drips from the lowest points and the hands
-        dr = Image.new("L", (Wp, Hp), 0); dd = ImageDraw.Draw(dr)
-        ys, xs = np.nonzero(pa > 0.5)
-        for _ in range(9):
-            k = r.integers(len(xs)); x, y = xs[k], ys[k]
-            col = np.nonzero(pa[:, x] > 0.5)[0]
-            if len(col) == 0: continue
-            y = col.max(); L_ = r.uniform(12, 70) * WS
-            w = r.uniform(1.6, 2.8) * WS
-            dd.line([(x, y), (x, y + L_)], fill=200, width=int(w))
-            dd.ellipse([x - w, y + L_ - w, x + w, y + L_ + w], fill=200)
-        drip = np.asarray(dr.filter(ImageFilter.GaussianBlur(0.6 * WS)), np.float32) / 255
-        tot = np.clip(pa * 0.97 + over * 0.22 + spk * 0.5 + drip * 0.85, 0, 1)
-        tot *= (0.88 + 0.12 * r.random(pa.shape))                                    # uneven paint
-        s.paint = Image.fromarray((tot * 255).astype(np.uint8))
-        s.band = bandm.filter(ImageFilter.GaussianBlur(0.5 * WS))
-        edge = np.asarray(paint.filter(ImageFilter.MaxFilter(5)), np.float32) - np.asarray(paint.filter(ImageFilter.MinFilter(5)), np.float32)
-        edge_im = Image.fromarray(edge.astype(np.uint8))
-        halo = np.asarray(edge_im.filter(ImageFilter.GaussianBlur(9 * WS)), np.float32)
-        glow = np.clip(edge * 1.0 + halo * 2.6, 0, 255)
-        s.glow = Image.fromarray(glow.astype(np.uint8))
-        bh = np.asarray(bandm.filter(ImageFilter.GaussianBlur(14 * WS)), np.float32)
-        s.bandhalo = Image.fromarray(np.clip(bh * 2.2, 0, 255).astype(np.uint8))
-
-    def screen_box(s, c, x):
-        a = c.P(x + s.bx0 * s.h, GROUND + s.by0 * s.h); b = c.P(x + s.bx1 * s.h, GROUND + s.by1 * s.h)
-        return a[0], a[1], b[0], b[1]
-
-
-_ST = None
-def stencils():
-    global _ST
-    if _ST is None:
-        _ST = {"man": [Stencil("base", 430, k / 3, 100 + k) for k in range(4)]}
-        H = {"child": 280, "hat": 405, "woman": 400, "old": 395, "base": 415}
-        for i, (x, kind) in enumerate(OTHERS):
-            _ST[x] = [Stencil(kind, H[kind], 0.0, 10 + i), Stencil(kind, H[kind], 1.0, 10 + i)]
-    return _ST
-
-
-def _masks(st, c, x, which):
-    """Resize the stencil's masks to screen; returns (x0, y0, dict of float arrays) clipped to the frame, or None."""
-    sx0, sy0, sx1, sy1 = st.screen_box(c, x)
-    if sx1 < 0 or sx0 > c.W or sy1 < 0 or sy0 > c.H: return None
-    w, h = max(2, int(round(sx1 - sx0))), max(2, int(round(sy1 - sy0)))
-    ix, iy = int(round(sx0)), int(round(sy0))
-    cx0, cy0 = max(0, -ix), max(0, -iy); cx1, cy1 = min(w, c.W - ix), min(h, c.H - iy)
-    if cx1 <= cx0 or cy1 <= cy0: return None
-    out = {}
-    for k in which:
-        m = getattr(st, k).resize((w, h), Image.BILINEAR)
-        out[k] = np.asarray(m, np.float32)[cy0:cy1, cx0:cx1] / 255
-    return ix + cx0, iy + cy0, out
-
 
 # ---------------------------------------------------------------- timeline
 def ignite(t, t0, dur=0.7):
@@ -277,8 +150,9 @@ def man_pose(t):
 
 
 def man_band(t):
-    if t < SH2: return 0.75 * ignite(t, 1.2, 1.0)
-    if t < SH6: return 0.12
+    if t < CUT2: return 0.85 * ignite(t, 1.2, 1.0)
+    if t < SH2: return 0.35
+    if t < SH6: return 0.3
     return 0.3 + 0.7 * man_glow(t)
 
 
@@ -330,34 +204,7 @@ def stripe(t):
     return ss((t - LS[6] - 0.4) / 1.6) * (1 - man_glow(t))
 
 
-# ---------------------------------------------------------------- light map (low res)
-def light_map(t, c):
-    lw, lh = c.W // 4, c.H // 4
-    base = np.full((lh, lw), ambient(t), np.float32)
-    yy = np.linspace(0, 1, lh)[:, None]
-    base *= (0.75 + 0.45 * (1 - yy))                                     # soft light from above
-    im = Image.new("L", (lw, lh), 0); d = ImageDraw.Draw(im)
-    for tx, hw, k in beams(t):
-        src = c.P(tx - 500, -900)
-        a = c.P(tx - hw, 700); b = c.P(tx + hw, 700)
-        dxa, dya = a[0] - src[0], a[1] - src[1]; dxb, dyb = b[0] - src[0], b[1] - src[1]
-        far = 3.0
-        poly = [(src[0] / 4, src[1] / 4), ((src[0] + dxa * far) / 4, (src[1] + dya * far) / 4),
-                ((src[0] + dxb * far) / 4, (src[1] + dyb * far) / 4)]
-        d.polygon(poly, fill=int(110 * k))
-        e = c.P(tx, 700); rx, ry = hw * c.z * 1.0 / 4, hw * c.z * 1.5 / 4
-        d.ellipse([e[0] / 4 - rx, e[1] / 4 - ry, e[0] / 4 + rx, e[1] / 4 + ry], fill=int(255 * k))
-    h = hit(t)
-    if h > 0:
-        e = c.P(MAN_X + 40, 640); r = 95 * c.z / 4
-        d.polygon([(e[0] / 4 - r * 0.6, 0), (e[0] / 4 + r * 0.6, 0), (e[0] / 4 + r, lh), (e[0] / 4 - r, lh)], fill=int(255 * h))
-    bl = np.asarray(im.filter(ImageFilter.GaussianBlur(max(2, 10 * c.z / 4 * 4 / 4))), np.float32) / 255
-    base += bl * 1.25
-    sl, sr = strobe(t)
-    xx = np.linspace(0, 1, lw)[None, :]
-    base += sl * 1.3 * np.clip(1 - xx * 1.6, 0, 1) + sr * 1.3 * np.clip(xx * 1.6 - 0.6, 0, 1)
-    base += 0.6 * h
-    return np.asarray(Image.fromarray(np.clip(base * 100, 0, 255).astype(np.uint8)).resize((c.W, c.H), Image.BILINEAR), np.float32) / 100
+
 
 
 # ---------------------------------------------------------------- poster (shots 2-3)
@@ -416,6 +263,7 @@ def glue_mark(img_arr, c, t):
     if x1 > x0 and y1 > y0: img_arr[y0:y1, x0:x1] *= 1.18
 
 
+
 # ---------------------------------------------------------------- rain
 def rain(img, c, t, amount=1.0):
     d = ImageDraw.Draw(img, "RGBA"); W, H = img.size
@@ -428,82 +276,6 @@ def rain(img, c, t, amount=1.0):
         d.line([(x, y), (x - ln[i] * 0.12, y + ln[i])], fill=(225, 228, 235, int(al[i])), width=2 if i % 5 == 0 else 1)
 
 
-# ---------------------------------------------------------------- wall scene
-def wall_frame(t, c):
-    img = wall_crop(c)                                           # unlit albedo
-    emit = np.zeros_like(img)
-    ST = stencils()
-    sl, sr = strobe(t)
-    jit = hit(t)
-    # gray / lit others
-    for i, (x, kind) in enumerate(OTHERS):
-        g, raised = other_state(x, t)
-        st = ST[x][1 if raised else 0]
-        r = _masks(st, c, x, ("paint", "band", "glow", "bandhalo") if g > 0 else ("paint",))
-        if r is None: continue
-        ox, oy, M = r; hh, ww = M["paint"].shape; sl_ = (slice(oy, oy + hh), slice(ox, ox + ww))
-        vis = 1.0
-        if sl + sr > 0 and g == 0 and (int(t * 9) + i * 3) % 4 == 0: vis = 0.3      # flicker under strobes
-        tone = lerp(98, 9, min(1, g * 1.4))
-        a = M["paint"][..., None] * vis
-        img[sl_] = img[sl_] * (1 - a) + tone * a
-        if g > 0:
-            b = M["band"][..., None]
-            img[sl_] = img[sl_] * (1 - b) + RED_PAINT * b
-            emit[sl_] += M["glow"][..., None] * WHITE * g * 0.95 + b * RED_GLOW * g * 0.9 + M["bandhalo"][..., None] * RED_GLOW * g * 0.45
-    # him
-    gm = man_glow(t); st = ST["man"][man_pose(t)]
-    mx = MAN_X + (np.random.default_rng(int(t * 30)).normal(0, 7) * jit)
-    r = _masks(st, c, mx, ("paint", "band", "glow", "bandhalo"))
-    if r is not None:
-        ox, oy, M = r; hh, ww = M["paint"].shape; sl_ = (slice(oy, oy + hh), slice(ox, ox + ww))
-        tone = lerp(98, 9, min(1, gm * 1.5))
-        a = M["paint"][..., None]
-        img[sl_] = img[sl_] * (1 - a) + tone * a
-        b = M["band"][..., None]
-        img[sl_] = img[sl_] * (1 - b) + RED_PAINT * b
-        be = man_band(t)
-        emit[sl_] += M["glow"][..., None] * WHITE * gm + b * RED_GLOW * be + M["bandhalo"][..., None] * RED_GLOW * be * 0.6
-    # gray spray stripe across him (shot 4 -> burns away in shot 6)
-    sp = stripe(t)
-    if sp > 0:
-        k = ss((t - LS[6] - 0.4) / 1.6)
-        p0 = (MAN_X - 95, 700); p1 = (lerp(MAN_X - 95, MAN_X + 105, k), lerp(700, 610, k))
-        m = Image.new("L", (c.W, c.H), 0); md = ImageDraw.Draw(m)
-        md.line([c.P(*p0), c.P(*p1)], fill=255, width=c.lw(34))
-        m = np.asarray(m.filter(ImageFilter.GaussianBlur(max(1, 4 * c.z))), np.float32)[..., None] / 255 * sp * 0.9
-        img = img * (1 - m) + 122 * m
-    # red light line passing the armband from person to person
-    tracks = Image.new("L", (c.W, c.H), 0); td = ImageDraw.Draw(tracks)
-    for x, lt in LIGHT_T.items():
-        src = SOURCE[x]; u = ss((t - (lt - 0.9)) / 0.9)
-        if u <= 0: continue
-        xe = lerp(src, x, u)
-        v = 255 if u < 1 else 120
-        td.line([c.P(src, BAND_Y), c.P(xe, BAND_Y)], fill=v, width=c.lw(5))
-        if u < 1:
-            hx, hy = c.P(xe, BAND_Y); rr = 12 * c.z; td.ellipse([hx - rr, hy - rr, hx + rr, hy + rr], fill=255)
-    tr = np.asarray(tracks, np.float32)
-    if tr.max() > 0:
-        trh = np.asarray(tracks.filter(ImageFilter.GaussianBlur(max(2, 9 * c.z))), np.float32)
-        emit += ((tr + trh * 2.5) / 255)[..., None] * RED_GLOW * 0.9
-    # lighting
-    L = light_map(t, c)
-    glue_mark(img, c, t)
-    img = img * L[..., None]
-    # wet sidewalk reflection of everything that glows
-    gy = int(round(c.P(0, WALL_END)[1]))
-    if 0 < gy < c.H:
-        n = min(gy, c.H - gy)
-        refl = emit[gy - n:gy][::-1] * 0.32
-        refl = np.asarray(Image.fromarray(np.clip(refl, 0, 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(max(2, 6 * c.z))), np.float32)
-        emit[gy:gy + n] += refl
-    out = Image.fromarray(np.clip(img + emit, 0, 255).astype(np.uint8))
-    if t < SH4:
-        px, py = c.P(1730, 420)
-        draw_poster(out, c, t, float(L[int(np.clip(py, 0, c.H - 1)), int(np.clip(px, 0, c.W - 1))]))
-    rain(out, c, t, 1.4 if SOLO0 <= t < SH9 else 1.0)
-    return out
 
 
 # ---------------------------------------------------------------- 5a: the government building
@@ -623,6 +395,7 @@ def profile_frame(t, size):
     return out
 
 
+
 # ---------------------------------------------------------------- frame + anchor
 def anchor(t):
     if SH5A <= t < SH5B: return (1500, 300, 1700, 420)            # beside the building's roof
@@ -631,11 +404,290 @@ def anchor(t):
     return (MAN_X - 110, 500, MAN_X + 160, 960)
 
 
+
+# ================================================================= v2 look (stencil rig, drums, volumetric light)
+from scipy.ndimage import gaussian_filter
+from lyricnoir.stencil import Pose, stencil, place, resized
+
+BEATS = [tuple(b) for b in json.load(open(os.path.join(os.path.dirname(__file__), "beats.json")))]
+BIG = [CUT2, SH7, SOLO0, SH9]                      # hard white-flash cuts
+TONES = (5.0, 50.0, 120.0)                         # stencil paint: dark base, mid, highlight
+MAN_H = 440
+WHO = {300: ("child", "q", -1, 430), 560: ("hat", "side", 1, 420), 820: ("coat", "side", -1, 405),
+       1080: ("hoodie", "side", 1, 430), 1340: ("coat", "side", 1, 410), 1860: ("umbrella", "side", 1, 425),
+       2120: ("child", "q", -1, 430), 2380: ("hat", "side", -1, 420), 2640: ("hoodie", "side", -1, 430),
+       2900: ("coat", "side", 1, 405)}
+LIT_KIND = {"umbrella": "plain"}
+
+
+def _breath(t, x):
+    return 0.5 if int((t + x * 0.0013) / 1.333) % 2 else -0.2
+
+
+def man_pose_v2(t):
+    w = _breath(t, MAN_X)
+    if t < CUT2 + 2.61: return Pose("hoodie", "side", -1, (-6, -4), (8, 6), "pocket", "pocket", 0.05, weight=w)
+    if t < CUT2 + 2.94: return Pose("hoodie", "q", -1, (-6, -4), (8, 6), "pocket", "pocket", 0.05)
+    if t < CUT2 + 3.69: return Pose("hoodie", "front", 1, (-6, -4), (8, 6), "pocket", "pocket", 0.055)
+    if t < CUT2 + 5.26: return Pose("hoodie", "front", 1, (-6, -4), (8, 6), "pocket", "pocket", 0.055, eyes=1.0)
+    if t < CUT2 + 5.61: return Pose("hoodie", "front", 1, (-6, -4), (30, -70), "pocket", "open", 0.055, eyes=1.0)
+    if t < SH4: return Pose("hoodie", "front", 1, (-6, -4), (8, 6), "pocket", "chest", 0.055, eyes=1.0)
+    if t < LS[14]: return Pose("hoodie", "front", 1, (-6, -4), (8, 6), "pocket", "pocket", 0.055, eyes=0.5 + 0.5 * man_glow(t))
+    if t < LS[15]: return Pose("hoodie", "front", 1, (-6, -4), (60, -40), "pocket", "fist", 0.06, eyes=1.0)
+    if t < LS[16]: return Pose("hoodie", "front", 1, (-6, -4), (115, -10), "pocket", "fist", 0.06, eyes=1.0)
+    return Pose("hoodie", "front", 1, (-8, -5), (165, 15), "pocket", "fist", 0.065, eyes=1.0)
+
+
+def other_pose_v2(x, t):
+    kind, head, face, h = WHO[x]
+    lt = LIGHT_T[x]
+    lk = LIT_KIND.get(kind, kind)
+    if t >= lt + 0.5: return Pose(lk, "front" if kind != "child" else "q", 1, (-8, -5), (165, 15), "pocket", "fist", 0.06)
+    if t >= lt: return Pose(lk, "front" if kind != "child" else "q", 1, (-8, -5), (90, -30), "pocket", "fist", 0.06)
+    kw = dict(kind=kind, head=head, face=face, weight=_breath(t, x), stance=0.05)
+    if kind == "hat": kw.update(larm=(-14, -8), lean=0.06)
+    if kind == "umbrella": kw.update(rarm=(30, -70))
+    if kind == "child": kw.update(larm=(-30, -20))
+    if kind in ("coat", "hoodie"): kw.update(lhand="pocket")
+    if x == 1340 and SH3 + 2.0 <= t < SH7: kw["face"] = -1                      # she turns her back on him
+    return Pose(**kw)
+
+
+def ghost_list(fn, t, keep=5):
+    out, prev = [], None
+    k0 = max(0, int((t - 4.0) * 6))
+    for k in range(k0, int(t * 6) + 1):
+        p = fn(k / 6)
+        if prev is not None and p != prev: out.append((prev, k / 6))
+        prev = p
+    return out[-keep:]
+
+
+def beat_kick(t, min_k=0.75):
+    """Camera shake offsets + zoom punch from the drum hits."""
+    sx = sy = zp = 0.0
+    amp = 0.0 if (SH5A <= t < SH6) else (0.6 if SOLO0 <= t < SH9 else 1.0)
+    for bt, k in BEATS:
+        if k < min_k or not (0 <= t - bt < 0.4): continue
+        e = k * math.exp(-(t - bt) / 0.09) * amp
+        r = np.random.default_rng(int(bt * 1000))
+        sx += r.normal(0, 8) * e; sy += r.normal(0, 6) * e; zp += 0.02 * e
+    for bt in BIG:
+        if 0 <= t - bt < 0.5:
+            e = math.exp(-(t - bt) / 0.12); r = np.random.default_rng(int(bt * 999))
+            sx += r.normal(0, 16) * e; sy += r.normal(0, 12) * e; zp += 0.04 * e
+    return sx, sy, zp
+
+
+def flash(t):
+    f = 0.0
+    for bt in BIG:
+        if 0 <= t - bt < 0.16: f = max(f, (1 - (t - bt) / 0.16) ** 2)
+    for bt, k in BEATS:
+        if k > 0.85 and 0 <= t - bt < 0.1: f = max(f, 0.10 * k * (1 - (t - bt) / 0.1))
+    return f
+
+
+def beams_v2(t):
+    if t < CUT2:
+        return [(lerp(400, 2800, ss((t - 2.5) / 6.0)), 110, 0.35 * ss((t - 2.5) / 0.8) * (1 - ss((t - 8.6) / 0.8)))]
+    if t < SH3: return [(lerp(700, 2500, ss((t - CUT2 + 0.2) / 7.2)), 150, 1.0)]
+    if SH3 <= t < SH4: return [(lerp(2300, 3000, (t - SH3) / (SH4 - SH3)), 140, 0.6)]
+    return beams(t)
+
+
+HEADLIGHTS = [(CUT2 + 4.76, 2.5, 2600, 500), (SOLO0 + 9.0, 2.6, 300, 2900), (SH4 + 1.0, 2.2, 2700, 600)]
+def headlights(t):
+    for t0, d, xa, xb in HEADLIGHTS:
+        if t0 <= t < t0 + d: return lerp(xa, xb, (t - t0) / d), math.sin(math.pi * (t - t0) / d)
+    return None
+
+
+_FOG = gaussian_filter(np.random.default_rng(1).random((90, 160)).astype(np.float32), 3, mode="wrap")
+_FOG = (_FOG - _FOG.min()) / (_FOG.max() - _FOG.min())
+def lights(t, c):
+    W, H = c.W, c.H; lw, lh = W // 4, H // 4
+    yy = np.linspace(0, 1, lh)[:, None]
+    amb = 0.07 if t < CUT2 else (0.18 if SH4 <= t < SH5A else (0.40 if t >= SH9 else 0.30))
+    L = np.full((lh, lw), amb, np.float32) * (0.75 + 0.45 * (1 - yy))
+    haze = np.zeros((lh, lw), np.float32)
+    X, Y = np.meshgrid(np.arange(lw), np.arange(lh))
+    fog = np.asarray(Image.fromarray((np.roll(_FOG, int(t * 6) % 160, axis=1) * 255).astype(np.uint8)).resize((lw, lh), Image.BILINEAR), np.float32) / 255
+    bl = list(beams_v2(t))
+    h = hit(t)
+    if h > 0: bl.append((MAN_X + 30, 120, 1.6 * h))
+    for tx, hw, k in bl:
+        if k <= 0: continue
+        src = c.P(tx - 700, -1300); a = c.P(tx - hw, 720); b = c.P(tx + hw, 720)
+        poly = [(src[0] / 4, src[1] / 4), ((src[0] + (a[0] - src[0]) * 2.6) / 4, (src[1] + (a[1] - src[1]) * 2.6) / 4),
+                ((src[0] + (b[0] - src[0]) * 2.6) / 4, (src[1] + (b[1] - src[1]) * 2.6) / 4)]
+        im = Image.new("L", (lw, lh), 0); ImageDraw.Draw(im).polygon(poly, fill=255)
+        cone = gaussian_filter(np.asarray(im, np.float32) / 255, 3)
+        haze = np.maximum(haze, cone * (0.35 + 0.65 * fog) * min(1.0, k))
+        e = c.P(tx, 720); rx, ry = (hw + 30) * c.z / 4, (hw * 1.4 + 60) * c.z / 4
+        L += np.exp(-(((X - e[0] / 4) / rx) ** 2 + ((Y - e[1] / 4) / ry) ** 2) * 1.6) * 1.35 * k + cone * 0.25 * k
+    hl = np.zeros((lh, lw), np.float32)
+    hd = headlights(t)
+    if hd is not None:
+        e = c.P(hd[0], 880)
+        hl = np.exp(-(((X - e[0] / 4) / (420 * c.z / 4)) ** 2 + ((Y - e[1] / 4) / (190 * c.z / 4)) ** 2)) * hd[1]
+        L += hl * 1.1
+    sl, sr = strobe(t)
+    xx = np.linspace(0, 1, lw)[None, :]
+    L += sl * 1.3 * np.clip(1 - xx * 1.6, 0, 1) + sr * 1.3 * np.clip(xx * 1.6 - 0.6, 0, 1) + 0.5 * h
+    L += flash(t) * 1.6
+    up = lambda a: np.asarray(Image.fromarray(np.clip(a * 60, 0, 255).astype(np.uint8)).resize((W, H), Image.BILINEAR), np.float32) / 60
+    return up(L), up(haze), up(hl)
+
+
+def paint_person(img, emit, c, x, pose, h, gl, glow=0.0, band=0.0, vis=1.0, t=0.0, dx=0.0):
+    for gp, tl in gl:
+        st = stencil(gp, h); pl = place(st, c, x + dx, GROUND, (c.W, c.H))
+        if pl is None: continue
+        w_, h_, src, dst = pl
+        a = resized(st.base, w_, h_)[src][..., None] * (0.30 * math.exp(-(t - tl) / 1.0) + 0.07) * vis
+        img[dst] = img[dst] * (1 - a) + 20 * a
+    st = stencil(pose, h); pl = place(st, c, x + dx, GROUND, (c.W, c.H))
+    if pl is None: return
+    w_, h_, src, dst = pl
+    for arr, tone in ((st.base, TONES[0]), (st.mid, TONES[1]), (st.light, TONES[2])):
+        a = resized(arr, w_, h_)[src][..., None] * vis
+        img[dst] = img[dst] * (1 - a) + tone * a
+    if glow > 0:
+        emit[dst] += resized(st.glow, w_, h_)[src][..., None] * WHITE * glow
+    if st.eyes is not None:
+        emit[dst] += resized(st.eyes, w_, h_)[src][..., None] * np.array([235, 240, 255]) * 1.8
+    if band > 0:                                                                # only those who carry the red
+        bd = resized(st.band, w_, h_)[src][..., None] * vis
+        img[dst] = img[dst] * (1 - bd) + RED_PAINT * bd
+        emit[dst] += bd * RED_GLOW * band * 0.8 + gaussian_filter(bd[..., 0], max(2, 6 * c.z))[..., None] * RED_GLOW * band * 0.45
+
+
+PASSERS = [(CUT2 - 2.44, 2.3, -1, "coat"), (CUT2 + 1.46, 2.0, 1, "umbrella"), (CUT2 + 5.96, 2.0, -1, "hat"),
+           (SH4 + 1.6, 2.2, 1, "hoodie"), (SOLO0 + 2.5, 2.4, -1, "coat"), (SOLO0 + 13.0, 2.4, 1, "umbrella")]
+def passers(img, t):
+    W, H = img.shape[1], img.shape[0]
+    for t0, d, dirn, kind in PASSERS:
+        if not (t0 <= t < t0 + d): continue
+        u = (t - t0) / d
+        sx = lerp(-700, W + 700, u) if dirn < 0 else lerp(W + 700, -700, u)
+        step = int(t * 8) % 4
+        p = Pose(kind, "side", 1 if dirn < 0 else -1, (-14 + step * 9, -8), (10 - step * 7, -6), stance=[0.02, 0.09, 0.02, 0.09][step])
+        st = stencil(p, 1000, 0.45)
+        bx0, by0, bx1, by1 = st.box
+        wpx, hpx = int((bx1 - bx0) * 1.55), int((by1 - by0) * 1.55)
+        a = resized(gaussian_filter(resized(st.base, wpx // 3, hpx // 3), 6), wpx, hpx)
+        x0 = int(sx - wpx / 2); y0 = int(H * 1.18 - hpx)
+        cx0, cy0, cx1, cy1 = max(0, -x0), max(0, -y0), min(wpx, W - x0), min(hpx, H - y0)
+        if cx1 <= cx0 or cy1 <= cy0: continue
+        aa = a[cy0:cy1, cx0:cx1][..., None] * 0.94
+        img[y0 + cy0:y0 + cy1, x0 + cx0:x0 + cx1] = img[y0 + cy0:y0 + cy1, x0 + cx0:x0 + cx1] * (1 - aa) + 3 * aa
+
+
+_R = np.random.default_rng(3); RN = 520
+RX, RY, RSP, RL = _R.random(RN) * 2220 - 150, _R.random(RN) * 1080, _R.uniform(1500, 2300, RN), _R.uniform(16, 44, RN)
+def rain_layer(t, W, H, amount=1.0):
+    im = Image.new("L", (W, H), 0); d = ImageDraw.Draw(im)
+    for i in range(int(RN * amount)):
+        y = (RY[i % RN] * H / 1080 + t * RSP[i % RN]) % (H + 60) - 30; x = RX[i % RN] * W / 1920 - y * 0.12
+        d.line([(x, y), (x - RL[i % RN] * 0.12, y + RL[i % RN])], fill=255, width=2 if i % 6 == 0 else 1)
+    return np.asarray(im, np.float32) / 255
+
+
+DUST = np.random.default_rng(8).random((260, 3))
+def dust(t, haze):
+    H, W = haze.shape; a = np.zeros((H, W), np.float32)
+    for k in range(len(DUST)):
+        x = int((DUST[k, 0] * W + t * 25 * (DUST[k, 2] - 0.5)) % W); y = int((DUST[k, 1] * H + t * 12) % H)
+        if haze[y, x] > 0.08: a[y:y + 2, x:x + 2] = haze[y, x]
+    return a
+
+
+def flare(img, t, c):
+    hd = headlights(t)
+    if hd is None: return img
+    W, H = c.W, c.H
+    x, y, k = c.P(hd[0], 880)[0], H * 0.96, hd[1]
+    stp = np.zeros((H, W), np.float32); yi = int(y); stp[yi - 2:yi + 2, :] = 1.0
+    stp = gaussian_filter(stp, (3, 0)) * np.exp(-((np.arange(W)[None, :] - x) / 700) ** 2)
+    X, Y = np.meshgrid(np.arange(0, W, 4), np.arange(0, H, 4))
+    small = np.exp(-(((X - x) / 90) ** 2 + ((Y - y) / 60) ** 2)) + np.exp(-(((X - (W - x)) / 40) ** 2 + ((Y - (H - y)) / 40) ** 2)) * 0.35
+    core = np.asarray(Image.fromarray(np.clip(small * 255, 0, 255).astype(np.uint8)).resize((W, H), Image.BILINEAR), np.float32) / 255
+    return img + (stp * 0.7 + core * 0.9)[..., None] * np.array([220, 228, 255]) * k
+
+
+def finish(img):
+    """Bloom + slight lens fringing (all scenes)."""
+    H, W = img.shape[:2]
+    br = np.clip(img.mean(-1) - 150, 0, None)
+    bl = np.asarray(Image.fromarray(np.clip(br, 0, 255).astype(np.uint8)).resize((W // 4, H // 4), Image.BILINEAR)
+                    .filter(ImageFilter.GaussianBlur(6)).resize((W, H), Image.BILINEAR), np.float32)
+    img = img + bl[..., None] * 0.8
+    img[..., 0] = np.roll(img[..., 0], 2, axis=1); img[..., 2] = np.roll(img[..., 2], -2, axis=1)
+    return img
+
+
+def wall_frame(t, c):
+    img = wall_crop(c); emit = np.zeros_like(img)
+    sl, sr = strobe(t)
+    for i, x in enumerate(sorted(WHO)):
+        g = ignite(t, LIGHT_T[x], 0.8)
+        vis = 0.35 if (sl + sr > 0 and g == 0 and (int(t * 9) + i * 3) % 4 == 0) else 1.0
+        paint_person(img, emit, c, x, other_pose_v2(x, t), WHO[x][3], ghost_list(lambda tt, x=x: other_pose_v2(x, tt), t),
+                     glow=g * 0.95, band=g * 0.9, vis=vis, t=t)
+    gm = man_glow(t)
+    jit = np.random.default_rng(int(t * 30)).normal(0, 7) * hit(t)
+    paint_person(img, emit, c, MAN_X, man_pose_v2(t), MAN_H, ghost_list(man_pose_v2, t), glow=gm, band=man_band(t), t=t, dx=jit)
+    sp = stripe(t)                                                              # gray spray stripe (shot 4 -> burns away)
+    if sp > 0:
+        k = ss((t - LS[6] - 0.4) / 1.6)
+        p0 = (MAN_X - 95, 700); p1 = (lerp(MAN_X - 95, MAN_X + 105, k), lerp(700, 610, k))
+        m = Image.new("L", (c.W, c.H), 0); ImageDraw.Draw(m).line([c.P(*p0), c.P(*p1)], fill=255, width=c.lw(34))
+        m = np.asarray(m.filter(ImageFilter.GaussianBlur(max(1, 4 * c.z))), np.float32)[..., None] / 255 * sp * 0.9
+        img = img * (1 - m) + 122 * m
+    tracks = Image.new("L", (c.W, c.H), 0); td = ImageDraw.Draw(tracks)        # red line passing the armband on
+    for x, lt in LIGHT_T.items():
+        src = SOURCE[x]; u = ss((t - (lt - 0.9)) / 0.9)
+        if u <= 0: continue
+        xe = lerp(src, x, u)
+        td.line([c.P(src, BAND_Y), c.P(xe, BAND_Y)], fill=255 if u < 1 else 120, width=c.lw(5))
+        if u < 1:
+            hx, hy = c.P(xe, BAND_Y); rr = 12 * c.z; td.ellipse([hx - rr, hy - rr, hx + rr, hy + rr], fill=255)
+    tr = np.asarray(tracks, np.float32)
+    if tr.max() > 0:
+        trh = np.asarray(tracks.filter(ImageFilter.GaussianBlur(max(2, 9 * c.z))), np.float32)
+        emit += ((tr + trh * 2.5) / 255)[..., None] * RED_GLOW * 0.9
+    L, haze, hl = lights(t, c)
+    glue_mark(img, c, t)
+    img = img * L[..., None]
+    gy = int(round(c.P(0, WALL_END)[1]))
+    if 0 < gy < c.H:
+        n = min(gy, c.H - gy); emit[gy:gy + n] += gaussian_filter(emit[gy - n:gy][::-1], (5, 5, 0)) * 0.35
+    img += emit
+    rl = rain_layer(t, c.W, c.H, 1.4 if SOLO0 <= t < SH9 else 1.0)
+    img += (rl * (28 + 230 * haze + 120 * hl))[..., None] * np.array([0.92, 0.95, 1.0])
+    img += (haze * 70)[..., None] * np.array([0.9, 0.94, 1.0])
+    img += (dust(t, haze) * 200)[..., None]
+    out = Image.fromarray(np.clip(img, 0, 255).astype(np.uint8))
+    if SH2 <= t < SH4:
+        px, py = c.P(1730, 420)
+        draw_poster(out, c, t, float(L[int(np.clip(py, 0, c.H - 1)), int(np.clip(px, 0, c.W - 1))]))
+    img = np.asarray(out, np.float32).copy()
+    passers(img, t)
+    return flare(img, t, c)
+
+
 def frame(t, size=(1920, 1080), cam=None):
     W, H = size
-    if cam is None and SH5A <= t < SH5B: img = building_frame(t, size)
-    elif cam is None and SH5B <= t < SH6: img = profile_frame(t, size)
+    if cam is None and SH5A <= t < SH5B: img = np.asarray(building_frame(t, size), np.float32).copy()
+    elif cam is None and SH5B <= t < SH6: img = np.asarray(profile_frame(t, size), np.float32).copy()
     else:
         z, cx, cy = cam or camera(t)
+        if cam is None:
+            sx, sy, zp = beat_kick(t)
+            cx += 3 * math.sin(t * 1.7) + 2 * math.sin(t * 3.1) + sx / z; cy += 2 * math.sin(t * 2.3 + 1) + sy / z; z *= 1 + zp
         img = wall_frame(t, Cam(z, cx, cy, W, H))
-    return Post.apply(img, t, fade_in_out(t, META["duration"], 1.0, META["fade_out"]))
+        if cam is None: img = img + flash(t) * 0  # flash already lights the wall
+    img = finish(img)
+    out = Image.fromarray(np.clip(img, 0, 255).astype(np.uint8))
+    return Post.apply(out, t, fade_in_out(t, META["duration"], 1.0, META["fade_out"]))
